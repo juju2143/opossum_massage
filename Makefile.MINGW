@@ -1,0 +1,17 @@
+CC = i586-mingw32msvc-gcc
+
+CFLAGS = -Os -I. -DJOYSTICK
+LDFLAGS = -lSDL2 -lmingw32 -mwindows
+DEFINES = -Wall -Wl,--as-needed
+OUTPUT = possum.exe
+
+SOURCES = src/main.c WRAPPER/PC_SDL2.c
+OBJS = ${SOURCES:.c=.o}
+
+${OUTPUT}:${OBJS}
+	${CC} -o ${OUTPUT} ${SOURCES} ${CFLAGS} ${LDFLAGS} ${DEFINES} 
+	
+clean:
+	rm src/*.o
+	rm WRAPPER/*.o
+	rm ${OUTPUT}

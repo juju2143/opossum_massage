@@ -1,0 +1,23 @@
+CC = nspire-gcc
+
+CFLAGS = -Ofast -fdata-sections -ffunction-sections -fomit-frame-pointer -marm -march=armv5te -mtune=arm926ej-s -Wall -W -marm -Isrc
+LDFLAGS = -nostdlib -Wl,--gc-sections -Wl,--as-needed -flto -lm
+OUTPUT = possum
+
+SOURCES = src/main_nspire.c src/n2DLib.c
+OBJS = ${SOURCES:.c=.o}
+
+all: ${OUTPUT}
+
+${OUTPUT}:${OBJS}
+	${CC} -o ${OUTPUT} ${SOURCES} ${CFLAGS} ${LDFLAGS} ${DEFINES} 
+	
+gen: 
+	genzehn --input ${OUTPUT} --output possum.temp.tns --compress
+	make-prg possum.temp.tns possum.tns
+	rm possum.temp.tns
+	rm ${OUTPUT}
+	
+clean:
+	rm src/*.o
+	rm ${OUTPUT}
