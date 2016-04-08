@@ -16,8 +16,41 @@ and to permit persons to whom the Software is furnished to do so, subject to the
 #include <math.h>
 #include <time.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #include "main.h"
 
+void main_loop()
+{
+#ifdef __EMSCRIPTEN__
+	if(emscripten_run_script_int("Module.synced") != 1)
+		return;
+#endif
+        Clear_screen();
+        Controls();
+        
+		if (BUTTON.QUIT) done = 1;
+        
+        switch(game_mode)
+        {
+			case TITLESCREEN:
+				title_logic();
+			break;
+			case STORY:
+				story_logic();
+			break;
+			case GAME:
+				gameplay();
+			break;
+			case GAMEOVER:
+				gameover_logic();
+			break;
+		}
+
+        Update_video();
+}
 
 int main ( int argc, char* argv[] )
 {
@@ -48,35 +81,26 @@ int main ( int argc, char* argv[] )
 	highscore = 0;
 	score = 0;
     reset_settings();
+#ifdef __EMSCRIPTEN__
+    EM_ASM(
+        FS.mkdir('/save');
+        FS.mount(IDBFS,{},'/save');
+        Module.synced = 0;
+        FS.syncfs(true, function(err)
+        {
+            assert(!err);
+            ccall('Load_score', 'v');
+        });
+    );
+    emscripten_set_main_loop(main_loop, 0, 1);
+#else
     Load_score();
-
     while (!done)
     {
-        Clear_screen();
-        Controls();
-        
-		if (BUTTON.QUIT) done = 1;
-        
-        switch(game_mode)
-        {
-			case TITLESCREEN:
-				title_logic();
-			break;
-			case STORY:
-				story_logic();
-			break;
-			case GAME:
-				gameplay();
-			break;
-			case GAMEOVER:
-				gameover_logic();
-			break;
-		}
+        main_loop();
+    }
+#endif
 
-        Update_video();
-
-    } 
-    
     // end main loop
 
     Clearing();
@@ -419,11 +443,18 @@ void mode_gameplay(unsigned char mode)
 	}
 }
 
+#ifdef __EMSCRIPTEN__
+void EMSCRIPTEN_KEEPALIVE Load_score()
+#else
 void Load_score()
+#endif
 {
 	FILE* file;
+#ifdef __EMSCRIPTEN__
+	file = fopen("/save/possum.save", "r+");
+#else
 	file = fopen("./possum.save", "r+");
-		
+#endif		
 	if (file)
 	{
 		 highscore = ReadLongLittleEndian (file);
@@ -431,23 +462,49 @@ void Load_score()
 	else
 	{
 		// If the file does not exist then create it
+#ifdef __EMSCRIPTEN__
+		file = fopen("/save/possum.save", "w");
+#else
 		file = fopen("./possum.save", "w");
+#endif		
 		highscore = 0;
+		WriteIntLittleEndian((uint32_t)highscore, file);
 	}
 	
 	sprintf(highscore_string, "%d", highscore);
 		
 	fclose(file);
+#ifdef __EMSCRIPTEN__
+	EM_ASM(
+            FS.syncfs(false, function(err)
+       	    {
+                assert(!err);
+	    });
+            Module.synced = 1;
+	);
+#endif		
 }
 
 void Save_score()
 {
 	FILE* file;
+#ifdef __EMSCRIPTEN__
+	file = fopen("/save/possum.save", "w+");
+#else
 	file = fopen("./possum.save", "w+");
+#endif		
 	
 	WriteIntLittleEndian((uint32_t)highscore, file);
 		
 	fclose(file);
+#ifdef __EMSCRIPTEN__
+	EM_ASM(
+            FS.syncfs(false, function(err)
+       	    {
+                assert(!err);
+	    });
+	);
+#endif		
 }
 
 

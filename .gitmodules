@@ -1,0 +1,3 @@
+[submodule "gameblablawrapper"]
+	path = gameblablawrapper
+	url = https://github.com/gameblabla/gameblablawrapper
