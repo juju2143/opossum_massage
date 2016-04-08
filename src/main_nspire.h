@@ -10,6 +10,7 @@ including without limitation the rights to use, copy, modify, merge, publish, di
 and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
 */
+
 #include "n2DLib.h"
 #include "graphics.h"
 
@@ -34,24 +35,47 @@ unsigned char game_mode;
 unsigned char start_pressed;
 unsigned char start_time;
 
+struct opossum_
+{
+	unsigned char state;
+	unsigned char time;
+	unsigned char time_needed;
+} possum;
+
+struct title
+{
+	unsigned char state;
+	unsigned char mode;
+} titlescreen;
+
+
 void title_logic();
 void story_logic();
-void fleche_logic(void);
+void fleche_logic(unsigned short x, unsigned short y);
+void gameplay();
 void game_logic();
 void gameover_logic();
 
+void Load_Font();
+void Print_text(int x, int y, char *text_ex, unsigned char color);
+
 short rand_a_b(short a, short b);
 void reset_settings();
-void Print_text(int x, int y, char *text_ex);
 
-#define uint32_t unsigned long
+void possum_state();
+void reset_possum_state(unsigned char mode);
+void mode_gameplay(unsigned char mode);
+
+void show_warn_sign();
+
+#define uint32_t unsigned int
 
 uint32_t ReadLongLittleEndian (FILE* output) ;
 void WriteIntLittleEndian (uint32_t long_in, FILE* output);
 void Load_score();
 void Save_score();
 
-void Print_text(int x, int y, char *text_ex)
+void Print_text(int x, int y, char *text_ex, unsigned char color)
 {
 	Rect text_rect;
 	int i = 0;
@@ -62,8 +86,21 @@ void Print_text(int x, int y, char *text_ex)
 	for (i=0;text_ex[i]!='\0';i++)
 	{
 		text_rect.x = (text_ex[i]-33)*text_rect.w;
-		//Put_sprite(100/*+i*/, x + (6 * i), y, 6, 11, text_ex[i]-33);
-		drawSpritePart(img_font, x + (6 * i), y, &text_rect, 0, 0);
+		switch(color)
+		{
+			case 0:
+				drawSpritePart(img_font, x + (6 * i), y, &text_rect, 0, 0);
+			break;
+			case 1:
+				drawSpritePart(img_font_blue, x + (6 * i), y, &text_rect, 0, 0);
+			break;
+			case 2:
+				drawSpritePart(img_font_red, x + (6 * i), y, &text_rect, 0, 0);
+			break;
+			case 3:
+				drawSpritePart(img_font_dred, x + (6 * i), y, &text_rect, 0, 0);
+			break;
+		}
+			
 	}
 }
-

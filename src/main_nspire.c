@@ -18,22 +18,21 @@ and to permit persons to whom the Software is furnished to do so, subject to the
 
 #include "main_nspire.h"
 
-unsigned char done = 0;
 
 int main ( int argc, char* argv[] )
 {
-	enable_relative_paths(argv);
+	unsigned char done = 0;
 	
+	enable_relative_paths(argv);
 	highscore = 0;
 	score = 0;
     reset_settings();
-    
     Load_score();
     
     initBuffering();
     clearBufferB();
     updateScreen();
-	
+
     while (!done)
     {
 		if (isKeyPressed(KEY_NSPIRE_ESC)) done = 1;
@@ -48,7 +47,7 @@ int main ( int argc, char* argv[] )
 				story_logic();
 			break;
 			case GAME:
-				game_logic();
+				gameplay();
 			break;
 			case GAMEOVER:
 				clearBufferB();
@@ -56,17 +55,16 @@ int main ( int argc, char* argv[] )
 			break;
 		}
 
-        updateScreen();
-
+		updateScreen();
     } 
     
-    deinitBuffering();
+    // end main loop
+	deinitBuffering();
     return 0;
 }
 
-void game_logic()
+void gameplay()
 {
-	
 	static unsigned char animation_oldman = 0;
 	static unsigned char time_oldman = 0;
 	unsigned char animation_oldman_frames[3] = {0, 1, 126};
@@ -75,7 +73,6 @@ void game_logic()
 	static unsigned char carre_time_reserve = 0;
 	static unsigned char start_time = 0;
 	unsigned char temp_random;
-	unsigned char lim;
 	Rect oldman_spr;
 	oldman_spr.w = 96;
 	oldman_spr.h = 100;
@@ -87,7 +84,7 @@ void game_logic()
 	drawSprite(img_white, 104+carre_tension, 22, 0,0);
 	
     sprintf(string_score, "%d", score);
-    Print_text(160, 7, string_score);
+    Print_text(160, 7, string_score, 0);
 	
 	drawSpritePart(img_oldman, 104, 108, &oldman_spr, 0, 0);
 	
@@ -100,6 +97,7 @@ void game_logic()
 			{
 				start_game = 1;
 				start_time = 0;
+				reset_possum_state(0);
 			}
 		break;	
 		case 1:
@@ -108,36 +106,20 @@ void game_logic()
 			carre_time_reserve++;
 			time_oldman++;
 			
+			mode_gameplay(titlescreen.mode);
+			
 			if (carre_tension < 1 || carre_tension > 103)
 			{
 				game_mode = GAMEOVER;
 			}
 			
-			if (score > 2000)
-			{
-				lim = 4;
-			}
-			else if (score > 1250)
-			{
-				lim = 3;
-			}
-			else if (score > 500)
-			{
-				lim = 1;
-			}
-			else
-			{
-				lim = 0;
-			}
-			
-
 			if (carre_time_reserve > 0)
 			{
 				while (carre_reserve > 0) 
 				{
 					temp_random = rand_a_b(1, 3);
 					carre_reserve = carre_reserve - 1;
-					carre_tension = (carre_tension + temp_random + lim);
+					carre_tension = (carre_tension + temp_random + possum.state);
 				}
 				carre_time_reserve = 0;
 			}
@@ -145,7 +127,7 @@ void game_logic()
 			if (carre_time > 0)
 			{
 				temp_random = 2;
-				carre_tension = carre_tension - (temp_random + lim);
+				carre_tension = carre_tension - (temp_random + possum.state);
 				carre_time = 0;
 			}
 			
@@ -167,44 +149,74 @@ void game_logic()
 void title_logic()
 {
 	static unsigned char red_time = 0;
+	static unsigned char press_start_time = 0;
 	drawSprite(img_title, 0, 0, 0,0);
+	drawSprite(img_possum, 112, 112, 0,0);
 	
-	if (isKeyPressed(KEY_NSPIRE_CTRL) && start_pressed == 0)
-	{
-		start_pressed = 1;
-		red_time = 0;
-		start_time = 0;
-	}
+	drawSprite(img_hi, 240, 208, 0,0);
+	Print_text(240, 224, highscore_string, 1);	
 	
-	if (start_pressed == 1)
+	switch(titlescreen.state)
 	{
-		start_time++;
-		red_time++;
-		
-		if (start_time < 20)
-		{
-			if (red_time < 4)
+		case 0:
+			press_start_time++;
+			
+			if (press_start_time > 60)
+				press_start_time = 0;
+			else if (press_start_time < 30)
+				Print_text(120, 172, "Menu to Start", 0);
+			
+			if (isKeyPressed(KEY_NSPIRE_MENU))
 			{
-				drawSprite(img_red, 0, 0, 0,0);
+				titlescreen.state = 1;
 			}
-			else if (red_time > 8)
+			
+		break;
+		case 1:
+			Print_text(136, 148, "Mood mode", 0);
+			Print_text(136, 164, "Linear mode", 0);
+			fleche_logic(112,146 + (titlescreen.mode * 14));
+			
+			if (isKeyPressed(KEY_NSPIRE_UP) || isKeyPressed(KEY_NSPIRE_UPRIGHT) || isKeyPressed(KEY_NSPIRE_LEFTUP))
+				titlescreen.mode = 0;
+			else if (isKeyPressed(KEY_NSPIRE_DOWN) || isKeyPressed(KEY_NSPIRE_DOWNLEFT) || isKeyPressed(KEY_NSPIRE_RIGHTDOWN))
+				titlescreen.mode = 1;
+			
+			if (isKeyPressed(KEY_NSPIRE_CTRL))
 			{
-				drawSprite(img_title, 0, 0, 0,0);
-			}
-			else
-			{
+				titlescreen.state = 2;
 				red_time = 0;
+				start_time = 0;
 			}
-		}
-		else if (start_time > 80)
-		{
-			game_mode = STORY;
-		}
-	}
-	else
-	{
-		drawSprite(img_hi, 240, 208, 0,0);
-		Print_text(240, 224, highscore_string);	
+			else if (isKeyPressed(KEY_NSPIRE_SHIFT))
+			{
+				titlescreen.state = 0;
+			}
+		break;
+		case 2:
+			start_time++;
+			red_time++;
+			
+			if (start_time < 20)
+			{
+				if (red_time < 4)
+				{
+					drawSprite(img_red, 0, 0, 0,0);
+				}
+				else if (red_time > 8)
+				{
+					drawSprite(img_title, 0, 0, 0,0);
+				}
+				else
+				{
+					red_time = 0;
+				}
+			}
+			else if (start_time > 80)
+			{
+				game_mode = STORY;
+			}
+		break;
 	}
 }
 
@@ -247,11 +259,11 @@ void story_logic()
 	}
 	else
 	{
-		fleche_logic();
+		fleche_logic(304,224);
 	}
 }
 
-void fleche_logic(void)
+void fleche_logic(unsigned short x, unsigned short y)
 {
 	static unsigned char fleche_frame = 0;
 	static unsigned char fleche_time = 0;
@@ -275,7 +287,7 @@ void fleche_logic(void)
 		fleche_frame = 0;
 	}
 	
-	drawSpritePart(img_fleche, 304, 224, &fleche_rect, 0, 0);
+	drawSpritePart(img_fleche, x, y, &fleche_rect, 0, 0);
 }
 
 void gameover_logic()
@@ -287,7 +299,7 @@ void gameover_logic()
 	gameover_time++;
 	if (animation_possum > 4) animation_possum = 0;
 	
-	drawSprite(img_possum, possum_x_positions[animation_possum], 0, 0, 0);
+	drawSprite(img_possum_go, possum_x_positions[animation_possum], 0, 0, 0);
 	drawSprite(img_gameover, 80, 16, 0, 0);
 	
 	if (gameover_time > 120)
@@ -296,16 +308,64 @@ void gameover_logic()
 	}
 }
 
+void show_warn_sign()
+{
+	static unsigned char i = 0;
+	static unsigned char warn_sign_frame[2] = {0, 1};
+	static unsigned char warn_sign_time = 0;
+	Rect warn_rect;
+	warn_rect.w = 16;
+	warn_rect.h = 16;
+	warn_rect.x = 16 * warn_sign_frame[i];
+	warn_rect.y = 0;
+	
+	warn_sign_time++;
+	if (warn_sign_time > 2)
+	{
+		warn_sign_time = 0;
+		i++;
+		if (i>1) i = 0;
+	}
+	drawSpritePart(img_warn, 64, 14, &warn_rect, 0, 0);
+}
+
+void possum_state()
+{
+	switch(possum.state)
+	{
+		case 0:
+			Print_text(12, 32, "Sleepy", 1);
+		break;
+		case 1:
+			Print_text(12, 32, "Grumpy", 0);
+		break;
+		case 2:
+			Print_text(12, 32, "Scared", 0);
+		break;
+		case 3:
+			Print_text(12, 32, "Angry", 2);
+		break;
+		case 4:
+			Print_text(12, 32, "SATANIC MAD", 2);
+		break;
+	}
+}
+
+void reset_possum_state(unsigned char mode)
+{
+	possum.state = (mode == 1) ? rand_a_b(0,5) : 0;
+	possum.time_needed = rand_a_b(360,480);
+	possum.time = 0;
+}
 
 void reset_settings()
 {
-	if (highscore < score) 
-	{	
+	if (score > highscore) 
+	{
 		highscore = score;
 		sprintf(highscore_string, "%d", highscore);
 		Save_score();
 	}
-	
 	game_mode = TITLESCREEN;
 	start_pressed = 0;
 	start_time = 0;
@@ -316,12 +376,53 @@ void reset_settings()
 	gameover_time = 0;
 	score = 0;
 	carre_tension = 52;
+	possum.state = 0;
+	possum.time = 0;
+	titlescreen.state = 0;
+	titlescreen.mode = 0;
 }
 
 // Used for random coordinate for the clouds
 short rand_a_b(short a, short b)
 {
     return rand()%(b-a) +a;
+}
+
+void mode_gameplay(unsigned char mode)
+{
+	switch(mode)
+	{
+		case 0:
+			Print_text(12, 16, "MOOD :", 0);
+			possum.time++;
+			
+			possum_state();
+			
+			if (possum.time > possum.time_needed)
+				reset_possum_state(1);
+				
+			if (possum.time+45 > possum.time_needed)
+				show_warn_sign();
+		break;
+		case 1:
+			if (score > 2000)
+			{
+				possum.state = 4;
+			}
+			else if (score > 1250)
+			{
+				possum.state = 3;
+			}
+			else if (score > 500)
+			{
+				possum.state = 1;
+			}
+			else
+			{
+				possum.state = 0;
+			}
+		break;
+	}
 }
 
 void Load_score()
@@ -331,12 +432,12 @@ void Load_score()
 		
 	if (file)
 	{
-		highscore = ReadLongLittleEndian (file);
+		 highscore = ReadLongLittleEndian (file);
 	}
 	else
 	{
 		// If the file does not exist then create it
-		file = fopen("./possum.save", "w");
+		file = fopen("./possum.save.tns", "w");
 		highscore = 0;
 	}
 	
@@ -348,19 +449,13 @@ void Load_score()
 void Save_score()
 {
 	FILE* file;
-
 	file = fopen("./possum.save.tns", "w+");
 	
-	WriteIntLittleEndian(highscore, file);
+	WriteIntLittleEndian((uint32_t)highscore, file);
 		
 	fclose(file);
 }
 
-
-/*
- * Theses routines were done by Lionel Debroux 
- * Many thanks to him ! (Now, i don't have to use modulo & divisions)
-*/
 
 uint32_t ReadLongLittleEndian (FILE* output) 
 {
@@ -380,4 +475,3 @@ void WriteIntLittleEndian (uint32_t long_in, FILE* output)
     fputc (((int)(long_in >> 24)) & 0xFF, output);
     fflush(output);
 }
-
